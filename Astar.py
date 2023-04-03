@@ -1,30 +1,31 @@
 import tkinter as tk
 import random
 from tkinter import messagebox
+from tkinter import Tk, simpledialog
 
 class Node:
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.parent = None
-        self.g = 0
-        self.h = 0
-        self.f = 0
-        self.is_obstacle = False
+        self.x = x              # coordonnée x du noeud
+        self.y = y              # coordonnée y du noeud
+        self.parent = None      # noeud parent dans le chemin trouvé
+        self.g = 0              # coût depuis le noeud de départ pour arriver à ce noeud
+        self.h = 0              # estimation du coût pour aller du noeud courant au noeud d'arrivée
+        self.f = 0              # coût total : g + h
+        self.is_obstacle = False   # indicateur pour savoir si le noeud est un obstacle
 
     def __repr__(self):
         return f"({self.x}, {self.y})"
 
 class AStar:
     def __init__(self, start, end, grid):
-        self.start = start
-        self.end = end
-        self.grid = grid
-        self.open_list = []
-        self.closed_list = []
+        self.start = start          # noeud de départ
+        self.end = end              # noeud d'arrivée
+        self.grid = grid            # grille de noeuds
+        self.open_list = []         # liste des noeuds à explorer
+        self.closed_list = []       # liste des noeuds explorés
 
     def get_distance(self, node_a, node_b):
-        return abs(node_a.x - node_b.x) + abs(node_a.y - node_b.y)
+        return abs(node_a.x - node_b.x) + abs(node_a.y - node_b.y)   # distance de Manhattan
 
     def get_neighbors(self, node):
         neighbors = []
@@ -52,10 +53,10 @@ class AStar:
     def run(self):
         self.open_list.append(self.start)
         while self.open_list:
-            current_node = min(self.open_list, key=lambda x: x.f)
+            current_node = min(self.open_list, key=lambda x: x.f)   # sélectionne le noeud ayant le coût total f le plus faible
             self.open_list.remove(current_node)
             self.closed_list.append(current_node)
-            if current_node == self.end:
+            if current_node == self.end:        # si le noeud courant est le noeud d'arrivée, on a trouvé un chemin
                 return self.get_path()
             for neighbor in self.get_neighbors(current_node):
                 if neighbor in self.closed_list:
@@ -73,100 +74,173 @@ class AStar:
 
 class Grid:
     def __init__(self, rows, cols, obstacles):
+        """
+        Initialise une grille de noeuds de taille rows * cols.
+        Chaque noeud est un objet de la classe Node.
+        obstacles est le nombre de cases qui seront marquées comme obstacles.
+        """
         self.rows = rows
         self.cols = cols
         self.obstacles = obstacles
+        
+        # Crée la grille de noeuds
         self.grid = [[Node(i, j) for j in range(cols)] for i in range(rows)]
-        self.start = self.grid[0][0]
-        self.end = self.grid[8][0]
+        
+        # Initialise le noeud de départ et le noeud de fin à None
+        self.start = None
+        self.end = None
+        
+        # Place les obstacles aléatoirement sur la grille
         self.set_obstacles()
-# fixer les obstacles 
+
     def set_obstacles(self):
+        
+        #Place les obstacles aléatoirement sur la grille.
+        
         for i in range(self.obstacles):
             x = random.randint(0, self.rows - 1)
             y = random.randint(0, self.cols - 1)
             self.grid[x][y].is_obstacle = True
-
-class Application:
-   
-    def __init__(self, start_coords, end_coords):
-        self.window = tk.Tk()
-        self.grid = Grid(10, 10, 20)
-        self.grid.start = self.grid.grid[start_coords[0]][start_coords[1]]
-        self.grid.end = self.grid.grid[end_coords[0]][end_coords[1]]
-        self.canvas = tk.Canvas(self.window, width=500, height=500)
-        self.draw_grid()
-        self.path = []
-
-        # Ajout de deux Entry widgets pour les coordonnées de départ et d'arrivée
-        self.start_entry = tk.Entry(self.window)
-        self.start_entry.insert(tk.END, f"{start_coords[0]}, {start_coords[1]}")
-        self.start_entry.pack()
-        self.end_entry = tk.Entry(self.window)
-        self.end_entry.insert(tk.END, f"{end_coords[0]}, {end_coords[1]}")
-        self.end_entry.pack()
-
-        # Bouton pour lancer la recherche de chemin avec les coordonnées entrées par l'utilisateur
-        self.button = tk.Button(self.window, text="Trouver le chemin", command=self.on_button_click)
-        self.button.pack()
-
-    def on_button_click(self):
-        start_coords = [int(coord) for coord in self.start_entry.get().split(",")]
-        end_coords = [int(coord) for coord in self.end_entry.get().split(",")]
-        self.grid.start = self.grid.grid[start_coords[0]][start_coords[1]]
-        self.grid.end = self.grid.grid[end_coords[0]][end_coords[1]]
-        self.draw_grid()
-        self.run()
-
     
+    def set_start(self, x, y):
+        
+        #Définit le noeud de départ.
+        
+        self.start = self.grid[x][y]
+
+    def set_end(self, x, y):
+        
+        #Définit le noeud de fin.
+        
+        self.end = self.grid[x][y]
+
+
+
+class Application(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        # Demander à l'utilisateur de saisir la taille de la grille (entre 5 et 20)
+        size = simpledialog.askinteger("Taille de la grille", "Entrez la taille de la grille (entre 5 et 20)", minvalue=5, maxvalue=20)
+        
+        # Créer la grille avec la taille saisie et un nombre d'obstacles proportionnel à la taille (10% de la surface totale)
+        
+        obstacles = int(size * size * 0.1) # calculer le nombre d'obstacles
+        
+        # Créer la grille avec la taille et le nombre d'obstacles définis
+        
+        self.grid = Grid(size, size, obstacles)
+
+        # Adapter la taille du canvas en fonction de la taille de la grille
+        
+        self.canvas = tk.Canvas(self.master, width=size * 25, height=size * 25)
+        self.canvas.pack()
+        self.button = tk.Button(self.master, text="Find path", command=self.find_path)
+        self.button.pack()
+        self.draw_grid()
+        self.start = None
+        self.end = None
+        self.path = None
+        self.canvas.bind("<Button-1>", self.select_node)
+        self.canvas.bind("<Button-3>", self.add_obstacle)
+
+    def add_obstacle(self, event):
+        i = event.x // 25
+        j = event.y // 25
+        node = self.grid.grid[i][j]
+        node.is_obstacle = True
+        x1 = i * 25
+        y1 = j * 25
+        x2 = x1 + 25
+        y2 = y1 + 25
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill="black")
+
+
     def draw_grid(self):
-        cell_width = 50
         for i in range(self.grid.rows):
             for j in range(self.grid.cols):
-                x1 = j * cell_width
-                y1 = i * cell_width
-                x2 = x1 + cell_width
-                y2 = y1 + cell_width
-                if self.grid.grid[i][j].is_obstacle:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="black")
-                elif self.grid.grid[i][j] == self.grid.start:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="green")
-                elif self.grid.grid[i][j] == self.grid.end:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="green")
+                node = self.grid.grid[i][j]
+                x1 = node.x * 25
+                y1 = node.y * 25
+                x2 = x1 + 25
+                y2 = y1 + 25
+                if node.is_obstacle:
+                    color = "black"
                 else:
-                    self.canvas.create_rectangle(x1, y1, x2, y2, fill="white")
-        self.canvas.pack()
+                    color = "white"
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
-        self.canvas.bind("<Button-1>", self.on_click)
-        self.canvas.bind("<Button-2>", self.on_clear)
+    
+    def select_node(self, event):
+        i = event.x // 25
+        j = event.y // 25
+        node = self.grid.grid[i][j]
+        color = "white" # Valeur par défaut pour color
+        if not node.is_obstacle:
+            if self.path is not None: # effacer le chemin précédent
+                for node in self.path:
+                    i = node.x
+                    j = node.y
+                    x1 = i * 25
+                    y1 = j * 25
+                    x2 = x1 + 25
+                    y2 = y1 + 25
+                    if node != self.start: # ne pas effacer le point de départ
+                        self.canvas.create_rectangle(x1, y1, x2, y2, fill="white")
+                self.path = None # réinitialiser le chemin
 
-    def on_click(self, event):
-        x = event.x // 50
-        y = event.y // 50
-        self.grid.grid[y][x].is_obstacle = not self.grid.grid[y][x].is_obstacle
-        self.draw_grid()
+            if self.start == node: # le nœud cliqué est le point de départ
+                color = "green"
+            elif self.end == node: # le nœud cliqué est le point d'arrivée
+                self.end = None # réinitialiser le point d'arrivée
+                color = "white"
+            elif self.start is None: 
+                self.start = node
+                color = "green"
+            elif self.end is None: # le nœud cliqué devient le point d'arrivée
+                self.end = node
+                color = "red"
+            else: # le nœud cliqué ne peut pas être sélectionné
+                return
 
-    def on_clear(self, events):
-        self.grid = Grid(10, 10, 15)
-        self.draw_grid()
+            x1 = i * 25
+            y1 = j * 25
+            x2 = x1 + 25
+            y2 = y1 + 25
+            self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+    def find_path(self):
+        if self.start is not None and self.end is not None:
+            astar = AStar(self.start, self.end, self.grid.grid)
+            new_path = astar.run()
+            if new_path is not None:
+                if self.path is not None: # effacer le chemin précédent
+                    for node in self.path:
+                        i = node.x
+                        j = node.y
+                        x1 = i * 25
+                        y1 = j * 25
+                        x2 = x1 + 25
+                        y2 = y1 + 25
+                        if node != self.start and node != self.end: # ne pas effacer les points de départ et d'arrivée
+                            self.canvas.create_rectangle(x1, y1, x2, y2, fill="white")
+                self.path = new_path # mettre à jour le chemin
+                for node in self.path:
+                    i = node.x
+                    j = node.y
+                    x1 = i * 25
+                    y1 = j * 25
+                    x2 = x1 + 25
+                    y2 = y1 + 25
+                    if node != self.start and node != self.end: # ne pas colorier les points de départ et d'arrivée
+                        self.canvas.create_rectangle(x1, y1, x2, y2, fill="blue")
+            else:
+                messagebox.showerror("Erreur", "Aucun chemin trouvé !")
 
     def run(self):
-        astar = AStar(self.grid.start, self.grid.end, self.grid.grid)
-        self.path = astar.run()
-        if self.path:
-            for node in self.path:
-                x1 = node.y * 50
-                y1 = node.x * 50
-                x2 = x1 + 50
-                y2 = y1 + 50
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill="blue")
-        else:
-            messagebox.showinfo("No path found.")
-        self.canvas.mainloop()
+        self.master.mainloop()
 
-start_coords = (0, 0)
-end_coords = (7, 6)
-
-app = Application(start_coords, end_coords)
-app.run()
+# Création de l'instance de la classe Tk
+root = tk.Tk()
+# Création de l'instance de la classe Application en passant root comme argument master
+app = Application(master=root)
+app.run()               
 
